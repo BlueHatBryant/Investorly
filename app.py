@@ -187,20 +187,27 @@ except Exception as e:
 
 # Earnings & Dividend Info
 st.subheader("💰 Earnings & Dividend Info")
-earn_date = info.get("earningsDate")
-div_yield = info.get("dividendYield")
+earn_date = info.get("earningsDate", None)
+div_yield = info.get("dividendYield", None)
+
+earn_str = "N/A"
 if earn_date:
-    if isinstance(earn_date, list):
-        earn_date = earn_date[0]
-    earn_date = pd.to_datetime(earn_date).strftime("%b %d, %Y")
+    try:
+        if isinstance(earn_date, list):
+            earn_date = earn_date[0]
+        earn_str = pd.to_datetime(earn_date).strftime("%b %d, %Y")
+    except Exception:
+        pass
+
 col1, col2 = st.columns(2)
-col1.markdown(f"**Next Earnings Date:** {earn_date if earn_date else 'N/A'}")
+col1.markdown(f"**Next Earnings Date:** {earn_str}")
 col2.markdown(f"**Dividend Yield:** {round(div_yield * 100, 2)}%" if div_yield else "No Dividend")
 
 # Analyst Ratings
 st.subheader("📋 Analyst Ratings")
-target_price = info.get("targetMeanPrice")
-recommendation = info.get("recommendationMean")
+target_price = info.get("targetMeanPrice", None)
+recommendation = info.get("recommendationMean", None)
+
 col1, col2 = st.columns(2)
 if target_price:
     col1.markdown(f"**Avg Target Price:** ${target_price}")
@@ -212,14 +219,12 @@ if recommendation:
         4.0: "Underperform",
         5.0: "Sell",
     }
-    rating_label = rating_scale.get(round(recommendation), "N/A")
-    col2.markdown(f"**Analyst Consensus:** {rating_label} ({recommendation}/5)")
-
-# News
-st.subheader(f"📰 News for {ticker}")
-news_df = fetch_news(ticker)
-if not news_df.empty:
-    for _, row in news_df.iterrows():
-        st.markdown(f"- [{row['title']}]({row['link']})")
+    label = rating_scale.get(round(float(recommendation)), "N/A")
+    col2.markdown(f"**Analyst Consensus:** {label} ({recommendation}/5)")
 else:
-    st.write("No news found or failed to fetch.")
+    col2.markdown("No analyst rating available.")
+
+# External Finance Link
+st.subheader(f"🔗 More on {ticker}")
+google_finance_url = f"https://www.google.com/finance/quote/{ticker}:NASDAQ"
+st.markdown(f"[View {ticker} on Google Finance]({google_finance_url})")
