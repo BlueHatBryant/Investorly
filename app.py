@@ -8,6 +8,7 @@ import os
 import requests
 from datetime import datetime, timedelta
 from textblob import TextBlob  # For sentiment analysis
+import time
 
 # 🛠️ Must be the FIRST Streamlit command
 st.set_page_config(page_title="📊 Investorly - Stock Dashboard", layout="wide")
@@ -101,6 +102,20 @@ if favorites:
     for fav in favorites:
         if st.sidebar.button(f"🔄 Load {fav}"):
             ticker = fav
+
+# --- 💵 Live Price Display ---
+st.subheader(f"💵 Live Price for {ticker}")
+price_placeholder = st.empty()
+
+def get_current_price():
+    try:
+        price = yf.Ticker(ticker).history(period="1d")["Close"].iloc[-1]
+        return f"${price:.2f}"
+    except Exception:
+        return "N/A"
+
+current_price = get_current_price()
+price_placeholder.metric("Current Price", current_price)
 
 # Load data
 st.subheader(f"📈 {ticker} — 1 Day (5-min interval)")
