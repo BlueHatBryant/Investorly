@@ -32,28 +32,6 @@ def save_favorites(favs):
     with open(FAV_FILE, "w") as f:
         json.dump(list(set(favs)), f)
 
-def fetch_news_sentiment(ticker):
-    try:
-        url = f"https://finance.yahoo.com/rss/headline?s={ticker}"
-        df = pd.read_xml(url)
-        df['sentiment'] = df['title'].apply(lambda x: TextBlob(x).sentiment.polarity)
-        df['pubDate'] = pd.to_datetime(df['pubDate'])
-        df.set_index('pubDate', inplace=True)
-        sentiment_trend = df['sentiment'].resample('D').mean()
-        return sentiment_trend
-    except:
-        return pd.Series()
-
-def fetch_news(ticker):
-    try:
-        url = f"https://finance.yahoo.com/rss/headline?s={ticker}"
-        return pd.read_xml(url)
-    except:
-        return pd.DataFrame()
-
-def analyze_sentiment(text):
-    return TextBlob(text).sentiment.polarity
-
 def load_settings():
     if os.path.exists(SETTINGS_FILE):
         with open(SETTINGS_FILE, "r") as f:
@@ -224,7 +202,7 @@ if recommendation:
 else:
     col2.markdown("No analyst rating available.")
 
-# External Finance Link
-st.subheader(f"🔗 More on {ticker}")
+# External Finance Link (Google News)
+st.subheader(f"📰 News & More for {ticker}")
 google_finance_url = f"https://www.google.com/finance/quote/{ticker}:NASDAQ"
-st.markdown(f"[View {ticker} on Google Finance]({google_finance_url})")
+st.markdown(f"[🔗 View news on Google Finance]({google_finance_url})")
