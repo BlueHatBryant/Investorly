@@ -141,57 +141,54 @@ st.bar_chart(daily_data.set_index("Date")["Volume"])
 # Performance Summary
 st.markdown("---")
 st.subheader("📊 Performance Summary")
-
 ticker_obj = yf.Ticker(ticker)
+
+# --- SAFELY FETCH INFO ---
+info = {}
 try:
-    info = ticker_obj.info
-    if not isinstance(info, dict):
-        raise ValueError("Invalid stock info returned.")
+    raw_info = ticker_obj.info
+    if raw_info and isinstance(raw_info, dict):
+        info = raw_info
+    else:
+        raise ValueError("No valid info returned from yfinance.")
 except Exception as e:
     st.warning(f"⚠️ Failed to fetch stock info: {e}")
-    info = {}
 
+hist = ticker_obj.history(period="6mo")
+hist = hist[hist["Close"].notna()]
 
 try:
-    hist = ticker_obj.history(period="6mo")
-    hist = hist[hist["Close"].notna()]
+    latest_date = hist.index[-1]
+    latest_close = hist["Close"].iloc[-1]
+
+    def get_close_on_or_before(days_ago):
+        target_date = latest_date - timedelta(days=days_ago)
+        filtered = hist[hist.index <= target_date]
+        return filtered["Close"].iloc[-1] if not filtered.empty else None
+
+    close_1d = get_close_on_or_before(1)
+    close_7d = get_close_on_or_before(7)
+    close_30d = get_close_on_or_before(30)
+
+    pct_1d = f"{((latest_close - close_1d) / close_1d * 100):.2f}%" if close_1d else "N/A"
+    pct_1w = f"{((latest_close - close_7d) / close_7d * 100):.2f}%" if close_7d else "N/A"
+    pct_1m = f"{((latest_close - close_30d) / close_30d * 100):.2f}%" if close_30d else "N/A"
+
+    row1 = st.columns(3)
+    row1[0].metric("1D Change", pct_1d)
+    row1[1].metric("1W Change", pct_1w)
+    row1[2].metric("1M Change", pct_1m)
+
+    row2 = st.columns(2)
+    row2[0].metric("52W High", f"${info.get('fiftyTwoWeekHigh', 'N/A')}")
+    row2[1].metric("52W Low", f"${info.get('fiftyTwoWeekLow', 'N/A')}")
 except Exception as e:
-    hist = pd.DataFrame()
-    st.warning(f"⚠️ Failed to fetch historical data: {e}")
-
-if not hist.empty:
-    try:
-        latest_date = hist.index[-1]
-        latest_close = hist["Close"].iloc[-1]
-
-        def get_close_on_or_before(days_ago):
-            target_date = latest_date - timedelta(days=days_ago)
-            filtered = hist[hist.index <= target_date]
-            return filtered["Close"].iloc[-1] if not filtered.empty else None
-
-        close_1d = get_close_on_or_before(1)
-        close_7d = get_close_on_or_before(7)
-        close_30d = get_close_on_or_before(30)
-
-        pct_1d = f"{((latest_close - close_1d) / close_1d * 100):.2f}%" if close_1d else "N/A"
-        pct_1w = f"{((latest_close - close_7d) / close_7d * 100):.2f}%" if close_7d else "N/A"
-        pct_1m = f"{((latest_close - close_30d) / close_30d * 100):.2f}%" if close_30d else "N/A"
-
-        row1 = st.columns(3)
-        row1[0].metric("1D Change", pct_1d)
-        row1[1].metric("1W Change", pct_1w)
-        row1[2].metric("1M Change", pct_1m)
-
-        row2 = st.columns(2)
-        row2[0].metric("52W High", f"${info.get('fiftyTwoWeekHigh', 'N/A')}")
-        row2[1].metric("52W Low", f"${info.get('fiftyTwoWeekLow', 'N/A')}")
-    except Exception as e:
-        st.warning(f"⚠️ Unable to calculate performance metrics: {e}")
+    st.warning(f"⚠️ Unable to calculate performance metrics: {e}")
 
 # Earnings & Dividend Info
 st.subheader("💰 Earnings & Dividend Info")
-earn_date = info.get("earningsDate") if info else None
-div_yield = info.get("dividendYield") if info else None
+earn_date = info.get("earningsDate")
+div_yield = info.get("dividendYield")
 if earn_date:
     if isinstance(earn_date, list):
         earn_date = earn_date[0]
@@ -202,8 +199,8 @@ col2.markdown(f"**Dividend Yield:** {round(div_yield * 100, 2)}%" if div_yield e
 
 # Analyst Ratings
 st.subheader("📋 Analyst Ratings")
-target_price = info.get("targetMeanPrice") if info else None
-recommendation = info.get("recommendationMean") if info else None
+target_price = info.get("targetMeanPrice")
+recommendation = info.get("recommendationMean")
 col1, col2 = st.columns(2)
 if target_price:
     col1.markdown(f"**Avg Target Price:** ${target_price}")
